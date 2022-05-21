@@ -17,15 +17,19 @@ def game_time():
 
 class Cube:
     state = 0  # 0 准备中 1 可以操作
+    setting_window = None  # 设置窗口
+    is_setting = 0  # 0 空闲 1 设置中
+    space = False  # 按下空格
+    hold_on = False  # 一次操作中
 
     up_canvas = None  # 上方画布
     main_canvas = None  # 主画布
     up_height = 130  # 主画布上方高度
     margin = 20  # 页面边缘留白
     height = 0  # 主画布高度 (不含留白，下同)
-    heightscale = 1  # 地图高度 / 主画布高度
+    height_scale = 1.0  # 地图高度 / 主画布高度
     width = 0  # 主画布宽度
-    widthscale = 1  # 地图宽度 / 主画布宽度
+    width_scale = 1.0  # 地图宽度 / 主画布宽度
     scale = 1  # penrose tiling的相对尺寸
     offset = (0, 0)  # penrose tiling的位置偏移
 
@@ -123,48 +127,54 @@ class Cube:
         start_new_thread(game_time, ())
 
     def left(self, event):
-        if Cube.state:
-            if not Cube.end:
-                if self.number != -1 or self.is_unknown:
-                    Cube.face.shift_face(Cube.face.face)
-                if not self.showflag:
-                    if self.is_unknown:
-                        Cube.main_canvas.itemconfig(self.rect, fill='grey')
-                    else:
-                        for j in self.neighbors:
-                            if not j.showflag and j.is_unknown:
-                                Cube.main_canvas.itemconfig(j.rect, fill='grey')
+        if not Cube.space:
+            Cube.hold_on = True
+            if Cube.state:
+                if not Cube.end:
+                    if self.number != -1 or self.is_unknown:
+                        Cube.face.shift_face(Cube.face.face)
+                    if not self.showflag:
+                        if self.is_unknown:
+                            Cube.main_canvas.itemconfig(self.rect, fill='grey')
+                        else:
+                            for j in self.neighbors:
+                                if not j.showflag and j.is_unknown:
+                                    Cube.main_canvas.itemconfig(j.rect, fill='grey')
 
     def back(self, event):
-        if Cube.state:
-            if Cube.is_new:
-                self.start_game()
-            if Cube.is_again:
-                start_new_thread(game_time, ())
-                Cube.is_again = False
-            if not Cube.end:
-                Cube.face.shift_face(Cube.face.normal_face)
-                if self.neighbor_flag_number != self.number:
-                    for i in self.neighbors:
-                        if i.is_unknown and not i.showflag:
-                            Cube.main_canvas.itemconfig(i.rect, fill=i.colorup)
-                elif not self.is_unknown:
-                    bomb = 0
-                    for j in self.neighbors:
-                        if not j.showflag and j.is_unknown:
-                            if Cube.main_canvas.itemcget(j.mine[0], 'state') == 'hidden':
-                                j.back(event)
-                            else:
-                                bomb = j
-                    if bomb != 0:
-                        bomb.back(event)
-            if not Cube.end and not self.showflag and self.is_unknown:
-                Cube.main_canvas.itemconfig(self.rect, fill='')
-                self.appear()
-                if self.number == 0:
-                    self.sweeping()
-            if Cube.known == Cube.num - Cube.mine:
-                win()
+        if Cube.space and not Cube.hold_on:
+            self.right(event)
+        else:
+            Cube.hold_on = False
+            if Cube.state:
+                if Cube.is_new:
+                    self.start_game()
+                if Cube.is_again:
+                    start_new_thread(game_time, ())
+                    Cube.is_again = False
+                if not Cube.end:
+                    Cube.face.shift_face(Cube.face.normal_face)
+                    if self.neighbor_flag_number != self.number:
+                        for i in self.neighbors:
+                            if i.is_unknown and not i.showflag:
+                                Cube.main_canvas.itemconfig(i.rect, fill=i.colorup)
+                    elif not self.is_unknown:
+                        bomb = 0
+                        for j in self.neighbors:
+                            if not j.showflag and j.is_unknown:
+                                if Cube.main_canvas.itemcget(j.mine[0], 'state') == 'hidden':
+                                    j.back(event)
+                                else:
+                                    bomb = j
+                        if bomb != 0:
+                            bomb.back(event)
+                if not Cube.end and not self.showflag and self.is_unknown:
+                    Cube.main_canvas.itemconfig(self.rect, fill='')
+                    self.appear()
+                    if self.number == 0:
+                        self.sweeping()
+                if Cube.known == Cube.num - Cube.mine:
+                    win()
 
     def appear(self):
         self.is_unknown = False
@@ -307,6 +317,10 @@ def lose():
         Cube.main_canvas.itemconfig(j.rect, fill='')
 
 
+def cheating(event):
+    cheat()
+
+
 def cheat():
     if not Cube.is_new and not Cube.end:
         for i in Cube.safe_list:
@@ -361,8 +375,27 @@ def root_menu():
     start_menu.add_command(label='Quit', command=root.quit)
     help_menu = Menu(main_menu)
     main_menu.add_cascade(label="Help", menu=help_menu)
+    help_menu.add_command(label='Guide', command=guide)
     help_menu.add_command(label='Cheat', command=cheat)
     root.config(menu=main_menu)
+
+
+def guiding(event):
+    guide()
+
+
+def guide():
+    t = Toplevel(root)
+    t.title('Guide')
+    t.geometry(f'{400}x{250}')
+    Label(t, justify='left', text='C: cheat\n\n'
+                                  'G or H: guide\n\n'
+                                  'N: new game\n\n'
+                                  'R: restart\n\n'
+                                  'Enter or S: settings\n\n'
+                                  'Space + LeftMouse: right mouse\n\n'
+                                  'Esc: quit\n\n').pack()
+    Button(t, text='确定', command=t.withdraw).pack()
 
 
 def new(event):
@@ -387,8 +420,8 @@ def new_game():
     Cube.index = []
     Cube.main_canvas.delete("all")
 
-    H = Cube.height * Cube.heightscale
-    W = Cube.width * Cube.widthscale
+    H = Cube.height * Cube.height_scale
+    W = Cube.width * Cube.width_scale
 
     index = []
     m, graph = Cube.genMap.gen_new_map(W, H)
@@ -424,7 +457,7 @@ def new_game():
     elif Cube.mine1 == 0:
         Cube.mine = (int(Cube.num / 100) + 1) * 10
         if Cube.mine / Cube.num > 0.15:
-            Cube.mine = int(Cube.num / 10)+2
+            Cube.mine = int(Cube.num / 10) + 2
     else:
         Cube.mine = Cube.num - 1
 
@@ -433,26 +466,37 @@ def new_game():
     Cube.state = 1
 
 
+def setting(event):
+    settings()
+
+
 def settings():
-    t = Toplevel()
-    t.title('Settings')
-    Label(t, text='Width (0.5 to 2):').grid()
-    Cube.v1 = StringVar()
-    Cube.v1.set(f'{Cube.widthscale}')
-    Entry(t, textvariable=Cube.v1, width=5).grid(row=0, column=1)
-    Label(t, text='Height (0.5 to 2):').grid(row=1, column=0)
-    Cube.v2 = StringVar()
-    Cube.v2.set(f'{Cube.heightscale}')
-    Entry(t, textvariable=Cube.v2, width=5).grid(row=1, column=1)
-    Label(t, text='Number of Mines (0 for auto):').grid(row=2, column=0)
-    Cube.v3 = StringVar()
-    Cube.v3.set(f'{Cube.mine1}')
-    Entry(t, textvariable=Cube.v3, width=5).grid(row=2, column=1)
-    Label(t, text='    ').grid(row=1, column=2)
-    ok = Button(t, text='OK', command=t.withdraw)
-    ok.grid(row=1, column=3)
-    Label(t, text='    ').grid(row=1, column=4)
-    ok.bind('<1>', set)
+    if not Cube.is_setting:
+        Cube.is_setting = 1
+
+        Cube.setting_window = Toplevel()
+        Cube.setting_window.title('Settings')
+        Label(Cube.setting_window, text='Width (0.5 to 2):').grid()
+        Cube.v1 = StringVar()
+        Cube.v1.set(f'{Cube.width_scale}')
+        e = Entry(Cube.setting_window, textvariable=Cube.v1, width=5)
+        e.grid(row=0, column=1)
+        e.focus()
+        e.select_adjust(len(Cube.v1.get()))
+        Label(Cube.setting_window, text='Height (0.5 to 2):').grid(row=1, column=0)
+        Cube.v2 = StringVar()
+        Cube.v2.set(f'{Cube.height_scale}')
+        Entry(Cube.setting_window, textvariable=Cube.v2, width=5).grid(row=1, column=1)
+        Label(Cube.setting_window, text='Number of Mines (0 for auto):').grid(row=2, column=0)
+        Cube.v3 = StringVar()
+        Cube.v3.set(f'{Cube.mine1}')
+        Entry(Cube.setting_window, textvariable=Cube.v3, width=5).grid(row=2, column=1)
+        Label(Cube.setting_window, text='    ').grid(row=1, column=2)
+        ok = Button(Cube.setting_window, text='OK')
+        ok.grid(row=1, column=3)
+        Label(Cube.setting_window, text='    ').grid(row=1, column=4)
+        ok.bind('<Button-1>', set)
+        Cube.setting_window.bind('<Return>', set)
 
 
 def set(event):
@@ -460,20 +504,23 @@ def set(event):
         w = float(Cube.v1.get())
         h = float(Cube.v2.get())
         m = int(Cube.v3.get())
-        Cube.widthscale = w
-        Cube.heightscale = h
+        Cube.width_scale = w
+        Cube.height_scale = h
         Cube.mine1 = m
-        if 0.5 > Cube.widthscale:
-            Cube.widthscale = 0.5
-        elif 2 < Cube.widthscale:
-            Cube.widthscale = 2
-        if 0.5 > Cube.heightscale:
-            Cube.heightscale = 0.5
-        elif 2 < Cube.heightscale:
-            Cube.heightscale = 2
+        if 0.5 > Cube.width_scale:
+            Cube.width_scale = 0.5
+        elif 2 < Cube.width_scale:
+            Cube.width_scale = 2
+        if 0.5 > Cube.height_scale:
+            Cube.height_scale = 0.5
+        elif 2 < Cube.height_scale:
+            Cube.height_scale = 2
         if 0 > Cube.mine1:
             Cube.mine1 = 0
         new_game()
+
+        Cube.setting_window.destroy()
+        Cube.is_setting = 0
     except:
         return
 
@@ -499,6 +546,18 @@ def start():
     new_game()
 
 
+def quiting(event):
+    root.quit()
+
+
+def space(event):
+    Cube.space = True
+
+
+def space_release(event):
+    Cube.space = False
+
+
 root = Tk()
 root.title('Penrose Minesweeper')
 
@@ -507,6 +566,16 @@ Screenheight = root.winfo_screenheight()
 
 root.geometry(f'{Screenwidth}x{Screenheight}')
 root_menu()
+root.bind('<Return>', setting)
+root.bind('<s>', setting)
+root.bind('<c>', cheating)
+root.bind('<n>', new)
+root.bind('<r>', restart)
+root.bind('<g>', guiding)
+root.bind('<h>', guiding)
+root.bind('<Escape>', quiting)
+root.bind('<space>', space)
+root.bind('<KeyRelease-space>', space_release)
 
 start()
 

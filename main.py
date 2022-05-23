@@ -17,7 +17,7 @@ def game_time():
 
 class Cube:
     state = 0  # 0 准备中 1 可以操作
-    odd = 0  # 0 准备中 1 可以操作
+    odd = 0  # 配色方案
     setting_window = None  # 设置窗口
     is_setting = 0  # 0 空闲 1 设置中
     space = False  # 按下空格

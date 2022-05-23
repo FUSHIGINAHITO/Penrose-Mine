@@ -17,6 +17,7 @@ def game_time():
 
 class Cube:
     state = 0  # 0 准备中 1 可以操作
+    odd = 0  # 0 准备中 1 可以操作
     setting_window = None  # 设置窗口
     is_setting = 0  # 0 空闲 1 设置中
     space = False  # 按下空格
@@ -66,12 +67,20 @@ class Cube:
         self.center = ((a[0] + c[0]) * 0.5, (a[1] + c[1]) * 0.5)
         if (a[0] - c[0]) ** 2 + (a[1] - c[1]) ** 2 < (b[0] - d[0]) ** 2 + (b[1] - d[1]) ** 2:
             self.type = 0  # 瘦菱形
-            self.colorup = '#6bc235'
-            self.colordown = '#fc9d9a'
+            if Cube.odd % 2:
+                self.colorup = '#6bc235'
+                self.colordown = '#fc9d9a'
+            else:
+                self.colorup = '#5ca7ba'
+                self.colordown = '#fbb217'
         else:
             self.type = 1  # 胖菱形
-            self.colorup = '#aedd35'
-            self.colordown = '#f9cdad'
+            if Cube.odd % 2:
+                self.colorup = '#aedd35'
+                self.colordown = '#f9cdad'
+            else:
+                self.colorup = '#a7dce0'
+                self.colordown = '#edde8b'
         self.neighbors = []  # 周围格列表
         self.number = -2  # 格子数字
         self.is_unknown = True  # 格子是否未知
@@ -404,6 +413,7 @@ def new(event):
 
 def new_game():
     Cube.state = 0
+    Cube.odd += 1
 
     Cube.flag_number = 0
     Cube.known = 0
